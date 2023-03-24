@@ -27,6 +27,12 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
+fun MenuView()
+{
+    TODO()
+}
+
+@Composable
 fun GreetingView(text: String) {
     Text(text = text)
 }
