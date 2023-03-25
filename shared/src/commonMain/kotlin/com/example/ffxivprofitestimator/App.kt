@@ -71,6 +71,7 @@ object UniversalisAPI : API() {
     override val baseURL: String = "https://universalis.app/api/v2"
     private val historyCache: LRUCache<Int, HistoryView> = LRUCache(20)
     private val dataCenters: MutableList<DataCenter> = mutableListOf()
+    private val worlds: MutableList<World> = mutableListOf()
 
     override suspend fun request(id: Int, contentType: ContentType) {
         when(contentType.getName())
@@ -82,6 +83,10 @@ object UniversalisAPI : API() {
                 dataCenters.clear()
                 dataCenters.addAll(getDatacenters())
             }
+            UniversalisContentType.WORLD.string -> {
+                worlds.clear()
+                worlds.addAll(getWorlds())
+            }
         }
     }
 
@@ -90,9 +95,19 @@ object UniversalisAPI : API() {
         return httpClient.get("$baseURL/${UniversalisContentType.HISTORY.string}/$id").body()
     }
 
-    private suspend fun getDatacenters(): List<DataCenter> {
+    suspend fun getDatacenters(): List<DataCenter> {
         return httpClient.get("$baseURL/${UniversalisContentType.DC.string}").body()
     }
+
+    suspend fun getWorlds(): List<World> {
+        return httpClient.get("$baseURL/${UniversalisContentType.WORLD.string}").body()
+    }
+
+    @kotlinx.serialization.Serializable
+    data class World(
+        val id: Int,
+        val name: String?,
+    )
 
     @kotlinx.serialization.Serializable
     data class DataCenter(
@@ -168,7 +183,7 @@ abstract class API {
     )
 
     enum class XIVContentType(val string: String) { ITEM("item"), RECIPE("recipe") }
-    enum class UniversalisContentType(val string: String) { HISTORY("history"), DC("data-centers") }
+    enum class UniversalisContentType(val string: String) { HISTORY("history"), DC("data-centers"), WORLD("worlds") }
     sealed class ContentType {
         data class XIV(val type: XIVContentType) : ContentType() {
             override fun getName() = type.string
