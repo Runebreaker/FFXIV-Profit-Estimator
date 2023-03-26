@@ -116,14 +116,18 @@ fun MenuView(servers: List<DataCenter>, worlds: Map<Int, World>)
                     ),
                     enabled = chosenDC != null
                 ) {
-                    Text(text = chosenWorld?.name ?: "Choose a World...")
+                    val chosenName = chosenWorld?.name ?: "Choose a World..."
+                    Text(text = chosenName)
                     DropdownMenu(expanded = worldExpanded, onDismissRequest = { worldExpanded = false }) {
                         chosenDC?.worlds?.forEach { id ->
+                            val displayedName = worlds[id]?.name ?: "Error"
                             DropdownMenuItem(onClick = {
                                 chosenWorld = worlds[id]
                                 worldExpanded = false
-                            }) {
-                                Text(text = worlds[id]?.name ?: "Error")
+                            },
+                            enabled = chosenName != displayedName
+                            ) {
+                                Text(text = displayedName)
                             }
                         }
                     }
