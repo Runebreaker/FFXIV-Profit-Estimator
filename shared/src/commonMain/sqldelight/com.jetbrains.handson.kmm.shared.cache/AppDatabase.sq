@@ -1,0 +1,31 @@
+CREATE TABLE Datacenters (
+    name TEXT NOT NULL PRIMARY KEY,
+    region TEXT
+);
+
+CREATE TABLE Worlds (
+    id INTEGER AS Int NOT NULL PRIMARY KEY,
+    name TEXT,
+    datacenter TEXT,
+    FOREIGN KEY (datacenter) REFERENCES Datacenters(name)
+);
+
+insertDatacenter:
+INSERT INTO Datacenters(name, region)
+VALUES (?,?);
+
+insertWorld:
+INSERT INTO Worlds(id,name,datacenter)
+VALUES (?,?,?);
+
+deleteDatacenters:
+DELETE FROM Datacenters;
+
+deleteWorlds:
+DELETE FROM Worlds;
+
+getWorldsOfDatacenter:
+SELECT Worlds.*
+FROM Datacenters
+INNER JOIN Worlds ON Datacenters.name = Worlds.datacenter
+WHERE Datacenters.name=?;
