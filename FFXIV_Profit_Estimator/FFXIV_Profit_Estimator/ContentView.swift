@@ -5,8 +5,10 @@ struct ContentView: View {
 	let greet = App().greet()
 
 	var body: some View {
-		Text(greet)
-            .font(.title)
+        List(0 ..< 20) { item in
+            Text(greet)
+                .font(.largeTitle)
+        }
 	}
 }
 
