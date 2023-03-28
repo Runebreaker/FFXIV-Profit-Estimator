@@ -31,14 +31,22 @@ internal class Database(databaseDriverFactory: DatabaseDriverFactory) {
         }
     }
 
-    internal fun getWorldsFromDatacenter(dataCenter: DataCenter): List<World>?
-    {
-        if (dataCenter.name == null) return null
-        return dbQuery.getWorldsOfDatacenter(name = dataCenter.name, mapper = ::mapWorld).executeAsList()
+    internal fun getWorlds(): List<World> {
+        return dbQuery.getWorlds(mapper = ::mapWorld).executeAsList()
     }
 
-    private fun mapWorld(id: Int, name: String?, datacenter: String?): World
-    {
-        return World(id, name)
+    internal fun getDatacenters(): List<DataCenter> {
+        return dbQuery.getDatacenters(mapper = ::mapDatacenter).executeAsList()
     }
+
+    internal fun getWorldsOfDatacenter(dataCenterName: String): List<World>
+    {
+        return dbQuery.getWorldsOfDatacenter(name = dataCenterName, mapper = ::mapWorld).executeAsList()
+    }
+
+    private fun mapDatacenter(name: String, region: String?): DataCenter =
+        DataCenter(name, region, getWorldsOfDatacenter(name).map { it.id })
+
+    private fun mapWorld(id: Int, name: String?, datacenter: String?): World =
+        World(id, name)
 }
