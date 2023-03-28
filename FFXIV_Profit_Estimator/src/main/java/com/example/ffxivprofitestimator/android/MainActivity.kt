@@ -18,21 +18,27 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.sp
 import com.example.ffxivprofitestimator.App
-import com.example.ffxivprofitestimator.UniversalisAPI.DataCenter
-import com.example.ffxivprofitestimator.UniversalisAPI.World
-import com.example.ffxivprofitestimator.UniversalisAPI.getWorlds
-import kotlinx.coroutines.launch
+import com.jetbrains.handson.kmm.shared.cache.DatabaseDriverFactory
+import com.jetbrains.handson.kmm.shared.entity.*
+
+lateinit var app: App
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        app = App(DatabaseDriverFactory(this))
+
         setContent {
             MyApplicationTheme {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colors.background
                 ) {
-                    GreetingView(App().greet())
+                    LaunchedEffect(app) {
+                        app.updateDB()
+                    }
+                    MenuView(servers = app.getDatacenters())
                 }
             }
         }
@@ -40,7 +46,7 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-fun MenuView(servers: List<DataCenter>, worlds: Map<Int, World>)
+fun MenuView(servers: List<DataCenter>)
 {
     var chosenDC: DataCenter? by remember { mutableStateOf(null) }
     var chosenWorld: World? by remember { mutableStateOf(null) }
@@ -72,65 +78,55 @@ fun MenuView(servers: List<DataCenter>, worlds: Map<Int, World>)
             modifier = Modifier
                 .fillMaxWidth()
             ) {
-                var dcExpanded by remember { mutableStateOf(false) }
-                Button(onClick = { dcExpanded = true },
-                    shape = CutCornerShape(30),
-                    border = BorderStroke(Dp(2f), Color.Black),
-                    colors = ButtonDefaults.buttonColors(
-                        backgroundColor = Color.Red,
-                        contentColor = Color.White,
-                        disabledBackgroundColor = Color.Gray,
-                        disabledContentColor = Color.DarkGray
-                    )
-                ) {
-                    Text(text = chosenDC?.name ?: "Choose a Datacenter",
-                        fontFamily = FontFamily.SansSerif,
+                SelectionButton(
+                    modifier = Modifier.weight(1f),
+                    activeElement = chosenDC,
+                    elements = servers,
+                    onActiveElementChange = { chosenDC = it },
+                )
+                SelectionButton(
+                    modifier = Modifier.weight(1f),
+                    activeElement = chosenWorld,
+                    elements = chosenDC?.name?.let { app.getWorldsOfDatacenter(it) } ?: emptyList(),
+                    onActiveElementChange = { chosenWorld = it },
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun <T> SelectionButton(modifier: Modifier, enabled: Boolean = true, activeElement: T, elements: List<T>, onActiveElementChange: (T) -> Unit)
+{
+    var expanded by remember { mutableStateOf(false) }
+    Button(onClick = { expanded = true },
+        shape = CutCornerShape(30),
+        border = BorderStroke(Dp(2f), Color.Black),
+        colors = ButtonDefaults.buttonColors(
+            backgroundColor = Color.Red,
+            contentColor = Color.White,
+            disabledBackgroundColor = Color.Gray,
+            disabledContentColor = Color.DarkGray
+        ),
+        modifier = modifier,
+        enabled = enabled
+    ) {
+        Text(text = activeElement.toString(),
+            fontFamily = FontFamily.SansSerif,
+            fontWeight = FontWeight.Bold
+        )
+        DropdownMenu(expanded = expanded,
+            onDismissRequest = { expanded = false }
+        ) {
+            elements.forEach {
+                DropdownMenuItem(onClick = {
+                    onActiveElementChange(it)
+                    expanded = false
+                }) {
+                    Text(it.toString(),
+                        fontFamily = FontFamily.Monospace,
                         fontWeight = FontWeight.Bold
                     )
-                    DropdownMenu(expanded = dcExpanded,
-                        onDismissRequest = { dcExpanded = false }
-                    ) {
-                        servers.forEach { 
-                            DropdownMenuItem(onClick = {
-                                chosenDC = it
-                                dcExpanded = false
-                            }) {
-                                Text(it.name ?: "Error",
-                                    fontFamily = FontFamily.Monospace,
-                                    fontWeight = FontWeight.Bold
-                                )
-                            }
-                        }
-                    }
-                }
-                Spacer(modifier = Modifier.width(Dp(10f)))
-                var worldExpanded by remember { mutableStateOf(false) }
-                Button(onClick = { worldExpanded = true },
-                    shape = CutCornerShape(30),
-                    border = BorderStroke(Dp(2f), Color.Black),
-                    colors = ButtonDefaults.buttonColors(
-                        backgroundColor = Color.Red,
-                        contentColor = Color.White,
-                        disabledBackgroundColor = Color.Gray,
-                        disabledContentColor = Color.DarkGray
-                    ),
-                    enabled = chosenDC != null
-                ) {
-                    val chosenName = chosenWorld?.name ?: "Choose a World..."
-                    Text(text = chosenName)
-                    DropdownMenu(expanded = worldExpanded, onDismissRequest = { worldExpanded = false }) {
-                        chosenDC?.worlds?.forEach { id ->
-                            val displayedName = worlds[id]?.name ?: "Error"
-                            DropdownMenuItem(onClick = {
-                                chosenWorld = worlds[id]
-                                worldExpanded = false
-                            },
-                            enabled = chosenName != displayedName
-                            ) {
-                                Text(text = displayedName)
-                            }
-                        }
-                    }
                 }
             }
         }
@@ -157,10 +153,7 @@ fun DefaultPreview() {
             worlds = listOf(43, 46, 51, 59, 69, 76, 92, 98)
         )
     )
-    val worlds: Map<Int, World> = mapOf(
-        45 to World(45, "Test")
-    )
     MyApplicationTheme {
-        MenuView(servers = dcs, worlds = worlds)
+        MenuView(servers = dcs)
     }
 }
