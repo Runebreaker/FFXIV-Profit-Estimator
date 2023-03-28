@@ -24,6 +24,14 @@ DELETE FROM Datacenters;
 deleteWorlds:
 DELETE FROM Worlds;
 
+getDatacenters:
+SELECT *
+FROM Datacenters;
+
+getWorlds:
+SELECT *
+FROM Worlds;
+
 getWorldsOfDatacenter:
 SELECT Worlds.*
 FROM Datacenters
