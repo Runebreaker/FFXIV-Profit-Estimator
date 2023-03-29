@@ -16,6 +16,7 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.ffxivprofitestimator.App
 import com.jetbrains.handson.kmm.shared.cache.DatabaseDriverFactory
@@ -79,16 +80,17 @@ fun MenuView(servers: List<DataCenter>)
                 .fillMaxWidth()
             ) {
                 SelectionButton(
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier.weight(1f).padding(5.dp),
                     activeElement = chosenDC,
                     elements = servers,
                     onActiveElementChange = { chosenDC = it },
                 )
                 SelectionButton(
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier.weight(1f).padding(5.dp),
                     activeElement = chosenWorld,
                     elements = chosenDC?.name?.let { app.getWorldsOfDatacenter(it) } ?: emptyList(),
                     onActiveElementChange = { chosenWorld = it },
+                    enabled = chosenDC != null
                 )
             }
         }
