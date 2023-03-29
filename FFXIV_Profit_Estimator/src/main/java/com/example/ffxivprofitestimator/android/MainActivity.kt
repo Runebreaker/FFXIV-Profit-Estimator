@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CutCornerShape
 import androidx.compose.material.*
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.runtime.*
@@ -50,10 +51,12 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 fun MenuView(servers: List<DataCenter>) {
-    var scaffoldState: ScaffoldState = rememberScaffoldState()
-    var coroutineScope: CoroutineScope = rememberCoroutineScope()
+    val scaffoldState: ScaffoldState = rememberScaffoldState()
+    val coroutineScope: CoroutineScope = rememberCoroutineScope()
     var chosenDC: DataCenter? by remember { mutableStateOf(null) }
     var chosenWorld: World? by remember { mutableStateOf(null) }
+    var searchBar: Boolean by remember { mutableStateOf(false) }
+    var searchContent: String by remember { mutableStateOf("Search for an item...") }
     Scaffold(
         scaffoldState = scaffoldState,
         topBar = {
@@ -61,7 +64,17 @@ fun MenuView(servers: List<DataCenter>) {
                 backgroundColor = Color.Black,
                 contentColor = Color.White,
                 title = {
-                    Text(text = "FFXIV Profit Estimator")
+                    if (!searchBar) {
+                        Text(text = "FFXIV Profit Estimator")
+                    }
+                    else {
+                        TextField(
+                            value = searchContent,
+                            onValueChange = {
+                                searchContent = it
+                            }
+                        )
+                    }
                 },
                 navigationIcon = {
                     IconButton(onClick = {
@@ -78,9 +91,11 @@ fun MenuView(servers: List<DataCenter>) {
                     }
                 },
                 actions = {
-                    IconButton(onClick = { /*TODO*/ }) {
+                    IconButton(onClick = {
+                        searchBar = !searchBar
+                    }) {
                         Icon(
-                            Icons.Default.Search,
+                            if (!searchBar) Icons.Default.Search else Icons.Default.Close,
                             contentDescription = "Search"
                         )
                     }
