@@ -2,14 +2,16 @@ package com.example.ffxivprofitestimator
 
 import com.example.ffxivprofitestimator.Util.LRUCache
 import kotlinx.coroutines.runBlocking
-import kotlin.test.Test
-import kotlin.test.assertEquals
-import kotlin.test.assertTrue
+import kotlin.test.*
 
 class APITests {
+    private val testAPI = TestAPI()
+    val testItemName = "rinascita"
+    val rinascitaSwordID = 37742
+    val recipeID = 35026
+
     @Test
     fun testRateLimit() {
-        val testAPI = TestAPI()
         runBlocking {
             println("Rate limit: ${testAPI.rateLimit}")
             for (i in 1..25)
@@ -17,6 +19,40 @@ class APITests {
                 testAPI.request { println("Request $i done at time ${testAPI.referenceTime}") }
                 assertTrue(testAPI.requestsThisSecond <= testAPI.rateLimit)
             }
+        }
+    }
+
+    @Test
+    fun testUniversalisAPICalls() {
+        runBlocking {
+            val worlds = UniversalisAPI.getWorlds()
+            assertNotNull(worlds)
+            println("Found worlds: $worlds")
+            val testingKeyPair = Pair(rinascitaSwordID, worlds.first().id)
+            val dcs = UniversalisAPI.getDatacenters()
+            assertNotNull(dcs)
+            println("Found datacenters: $dcs")
+            val historyView = UniversalisAPI.getHistoryView(testingKeyPair)
+            assertNotNull(historyView)
+            assertTrue(historyView.valid)
+            println("Found history view: $historyView")
+            val item = UniversalisAPI.getItem(testingKeyPair.first, testingKeyPair.second)
+            assertNotNull(item)
+            println("Found item: $item")
+            assertContains(UniversalisAPI.getCachedItems(), testingKeyPair)
+            assertNotNull(UniversalisAPI.getCachedItems()[testingKeyPair])
+            println("Found item in cache: ${UniversalisAPI.getCachedItems()[testingKeyPair]}")
+        }
+    }
+
+    @Test
+    fun testXIVAPICalls() {
+        runBlocking {
+            val item = XIVAPI.getItem(rinascitaSwordID)
+            assertNotNull(item)
+            println("Found item $item")
+            val imageByteArray = XIVAPI.getIconAsByteArray(item.icon)
+            assertNotNull(imageByteArray)
         }
     }
 }
