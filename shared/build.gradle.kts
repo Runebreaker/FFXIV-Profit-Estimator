@@ -2,7 +2,7 @@ val coroutinesVersion = "1.6.4"
 val ktorVersion = "2.2.1"
 val sqlDelightVersion = "1.5.5"
 val dateTimeVersion = "0.4.0"
-val volleyVersion = "1.2.1"
+val navVersion = "2.5.3"
 
 plugins {
     kotlin("multiplatform")
@@ -33,7 +33,6 @@ kotlin {
     sourceSets {
         val commonMain by getting {
             dependencies {
-                implementation("com.android.volley:volley:$volleyVersion")
                 implementation("org.jetbrains.kotlinx:kotlinx-datetime:$dateTimeVersion")
                 implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:$coroutinesVersion")
                 implementation("io.ktor:ktor-client-core:$ktorVersion")
@@ -51,6 +50,7 @@ kotlin {
             dependencies {
                 implementation("io.ktor:ktor-client-android:$ktorVersion")
                 implementation("com.squareup.sqldelight:android-driver:$sqlDelightVersion")
+                implementation("androidx.navigation:navigation-compose:$navVersion")
             }
         }
         val androidUnitTest by getting
