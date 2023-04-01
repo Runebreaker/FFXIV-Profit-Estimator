@@ -102,6 +102,10 @@ object XIVAPI : API() {
         println("$baseURL$iconUrl")
         httpClient.get("$baseURL$iconUrl").body()
     }
+
+    fun getItemCache() = itemCache
+
+    fun getIconCache() = iconCache
 }
 
 object UniversalisAPI : API() {
