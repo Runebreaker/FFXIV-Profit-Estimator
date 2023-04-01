@@ -9,6 +9,8 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.CutCornerShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -29,12 +31,19 @@ import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.navigation.NavArgument
+import androidx.navigation.NavType
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
 import com.example.ffxivprofitestimator.App
 import com.example.ffxivprofitestimator.XIVAPI
 import com.example.ffxivprofitestimator.android.ui.theme.AppTheme
 import com.jetbrains.handson.kmm.shared.cache.DatabaseDriverFactory
 import com.jetbrains.handson.kmm.shared.entity.*
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
 
 lateinit var app: App
@@ -50,7 +59,8 @@ class MainActivity : ComponentActivity() {
             AppTheme(useDarkTheme = darkTheme) {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
-                    color = MaterialTheme.colors.background
+                    color = MaterialTheme.colors.surface,
+                    contentColor = MaterialTheme.colors.onSurface
                 ) {
                     LaunchedEffect(app) {
                         app.updateDB()
@@ -80,8 +90,8 @@ fun MenuView(servers: List<DataCenter>, isDarkMode: Boolean, onThemeChange: () -
         scaffoldState = scaffoldState,
         backgroundColor = MaterialTheme.colors.background,
         contentColor = MaterialTheme.colors.onBackground,
-        drawerBackgroundColor = MaterialTheme.colors.primary,
-        drawerContentColor = MaterialTheme.colors.onPrimary,
+        drawerBackgroundColor = MaterialTheme.colors.surface,
+        drawerContentColor = MaterialTheme.colors.onSurface,
         topBar = {
             TopAppBar(
                 backgroundColor = MaterialTheme.colors.background,
@@ -155,6 +165,15 @@ fun MenuView(servers: List<DataCenter>, isDarkMode: Boolean, onThemeChange: () -
                 backgroundColor = MaterialTheme.colors.background,
                 contentColor = MaterialTheme.colors.onBackground
             ) {
+                val buttonColors = ButtonDefaults.buttonColors(
+                    backgroundColor = MaterialTheme.colors.primary,
+                    contentColor = MaterialTheme.colors.onPrimary,
+                    disabledBackgroundColor = MaterialTheme.colors.surface,
+                    disabledContentColor = MaterialTheme.colors.onSurface
+                )
+                val borderColor = MaterialTheme.colors.surface
+                val ddbColor = MaterialTheme.colors.surface
+                val ddcColor = MaterialTheme.colors.onSurface
                 SelectionButton(
                     modifier = Modifier
                         .weight(1f)
@@ -167,6 +186,10 @@ fun MenuView(servers: List<DataCenter>, isDarkMode: Boolean, onThemeChange: () -
                     },
                     defaultDropdownString = "Datacenters...",
                     defaultItemString = "Unnamed DC",
+                    buttonColors = buttonColors,
+                    borderColor = borderColor,
+                    dropdownBackgroundColor = ddbColor,
+                    dropdownContentColor = ddcColor
                 )
                 SelectionButton(
                     modifier = Modifier
@@ -178,6 +201,10 @@ fun MenuView(servers: List<DataCenter>, isDarkMode: Boolean, onThemeChange: () -
                     enabled = chosenDC != null,
                     defaultDropdownString = "Worlds...",
                     defaultItemString = "Unnamed World",
+                    buttonColors = buttonColors,
+                    borderColor = borderColor,
+                    dropdownBackgroundColor = ddbColor,
+                    dropdownContentColor = ddcColor
                 )
             }
         },
@@ -190,7 +217,6 @@ fun MenuView(servers: List<DataCenter>, isDarkMode: Boolean, onThemeChange: () -
             ) {
                 Text(
                     "Dark mode",
-                    color = MaterialTheme.colors.onPrimary,
                     modifier = Modifier
                         .padding(5.dp)
                 )
@@ -198,45 +224,116 @@ fun MenuView(servers: List<DataCenter>, isDarkMode: Boolean, onThemeChange: () -
                     checked = isDarkMode,
                     onCheckedChange = { onThemeChange() },
                     colors = SwitchDefaults.colors(
-                        checkedThumbColor = MaterialTheme.colors.onPrimary,
-                        checkedTrackColor = MaterialTheme.colors.onPrimary,
-                        uncheckedThumbColor = MaterialTheme.colors.onPrimary,
-                        uncheckedTrackColor = MaterialTheme.colors.onPrimary
+                        checkedTrackColor = MaterialTheme.colors.onSurface,
+                        checkedThumbColor = MaterialTheme.colors.onSurface,
+                        uncheckedTrackColor = MaterialTheme.colors.onSurface,
+                        uncheckedThumbColor = MaterialTheme.colors.onSurface,
                     ),
                     modifier = Modifier
                         .padding(5.dp)
                 )
             }
         }
-    ) {
-        Box(
-            modifier = Modifier.padding(it)
-        ) {
-            Text("Ayyy lmao")
+    ) { padding ->
+        val padding = padding
+        val navController = rememberNavController()
+        NavHost(navController = navController, startDestination = "home") {
+            composable("home") {
+                Button(onClick = {
+                    coroutineScope.launch {
+                        XIVAPI.getItem(app.rinascitaSwordID)
+                        navController.navigate("item_info/${app.rinascitaSwordID}")
+                    }
+                }) {
+                    Text("Test item!")
+                }
+            }
+            composable("settings") {  }
+            composable(
+                "item_info/{item_id}",
+                arguments = listOf(navArgument("item_id") { type = NavType.IntType })
+            ) { navBackStackEntry ->
+                navBackStackEntry.arguments?.getInt("item_id")?.let { itemId ->
+                    val itemCache = XIVAPI.getItemCache().getEntries()
+                    val iconCache = XIVAPI.getIconCache().getEntries()
+                    if (itemCache.containsKey(itemId)) ItemScreen(
+                        selectedItemId = itemId,
+                        itemCache = itemCache,
+                        iconCache = iconCache
+                    )
+                    else ErrorScreen(errorText = "Oops! That item doesn't exist!")
+                }
+            }
         }
     }
 }
 
-@Preview
 @Composable
-fun TestIconCreation() {
-    var item: Item? by remember { mutableStateOf(null) }
-    LaunchedEffect(true) {
-        item = XIVAPI.getItem(app.rinascitaSwordID)
-    }
+fun ErrorScreen(errorText: String) {
     Box(
+        contentAlignment = Alignment.Center,
         modifier = Modifier
-            .fillMaxSize()
-            .background(MaterialTheme.colors.background),
+            .fillMaxSize(0.8f)
+            .background(MaterialTheme.colors.error)
+            .clip(RoundedCornerShape(30))
     ) {
-        item?.let {
-            CacheItem(item = it)
+        Column(
+            verticalArrangement = Arrangement.Center,
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Icon(
+                Icons.Default.Info,
+                contentDescription = "ErrorIcon",
+                tint = MaterialTheme.colors.onError
+            )
+            Text(
+                text = errorText,
+                fontFamily = FontFamily.SansSerif,
+                fontWeight = FontWeight.Medium,
+                color = MaterialTheme.colors.onError
+            )
         }
     }
 }
 
 @Composable
-fun CacheItem(item: Item) {
+fun ItemScreen(
+    selectedItemId: Int,
+    itemCache: LinkedHashMap<Int, Item>,
+    iconCache: LinkedHashMap<Int, ByteArray?>
+) {
+    Column(
+        verticalArrangement = Arrangement.SpaceEvenly,
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Row(
+            horizontalArrangement = Arrangement.SpaceEvenly,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            itemCache[selectedItemId]?.let {
+                CacheItem(item = it, icon = iconCache[it.id])
+            }
+        }
+        LazyColumn(
+            verticalArrangement = Arrangement.SpaceEvenly,
+            horizontalAlignment = Alignment.CenterHorizontally,
+            modifier = Modifier
+                .fillMaxSize()
+        ) {
+            itemCache.forEach { entry ->
+                item(
+                    key = entry.key,
+                    contentType = Item
+                ) { 
+                    CacheItem(item = entry.value, icon = iconCache[entry.key])
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun CacheItem(item: Item, icon: ByteArray?) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceEvenly,
@@ -246,7 +343,7 @@ fun CacheItem(item: Item) {
             .clip(RoundedCornerShape(50))
             .background(MaterialTheme.colors.primary)
     ) {
-        XIVAPI.getCachedIcon(item.id)?.let {
+        icon?.let {
             ImageFromByteArray(
                 byteArray = it,
                 scale = ContentScale.FillHeight,
@@ -256,7 +353,7 @@ fun CacheItem(item: Item) {
                     .clip(CircleShape)
                     .border(2.dp, MaterialTheme.colors.secondary, CircleShape)
             )
-        }
+        } ?: Icon(Icons.Default.List, contentDescription = "DefaultIcon")
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.SpaceEvenly,
@@ -302,21 +399,27 @@ fun <T> SelectionButton(
     defaultItemString: String = "Unnamed",
     activeElement: T,
     elements: List<T>,
+    borderColor: Color,
+    buttonColors: ButtonColors,
+    dropdownBackgroundColor: Color,
+    dropdownContentColor: Color,
     onActiveElementChange: (T) -> Unit
 ) {
     var expanded by remember { mutableStateOf(false) }
     Button(
         onClick = { expanded = true },
         shape = CutCornerShape(30),
-        border = BorderStroke(Dp(2f), MaterialTheme.colors.onSecondary),
-        colors = ButtonDefaults.buttonColors(
-            backgroundColor = MaterialTheme.colors.secondary,
-            contentColor = MaterialTheme.colors.onSecondary,
-            disabledBackgroundColor = Color.Gray,
-            disabledContentColor = Color.DarkGray
-        ),
+        border = BorderStroke(Dp(2f), borderColor),
+        colors = buttonColors,
         modifier = modifier,
-        enabled = enabled
+        enabled = enabled,
+        elevation = ButtonDefaults.elevation(
+            defaultElevation = 10.dp,
+            disabledElevation = (-5).dp,
+            focusedElevation = 15.dp,
+            hoveredElevation = 15.dp,
+            pressedElevation = 0.dp,
+        )
     ) {
         Text(
             text = activeElement?.toString() ?: defaultDropdownString,
@@ -327,7 +430,7 @@ fun <T> SelectionButton(
             expanded = expanded,
             onDismissRequest = { expanded = false },
             modifier = Modifier
-                .background(MaterialTheme.colors.background)
+                .background(dropdownBackgroundColor)
         ) {
             elements.forEach {
                 DropdownMenuItem(
@@ -336,13 +439,13 @@ fun <T> SelectionButton(
                         expanded = false
                     },
                     modifier = Modifier
-                        .background(MaterialTheme.colors.secondary)
+                        .background(dropdownBackgroundColor)
                 ) {
                     Text(
                         it?.toString() ?: defaultItemString,
                         fontFamily = FontFamily.Monospace,
                         fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colors.onSecondary
+                        color = dropdownContentColor
                     )
                 }
             }
