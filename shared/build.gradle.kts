@@ -2,7 +2,6 @@ val coroutinesVersion = "1.6.4"
 val ktorVersion = "2.2.1"
 val sqlDelightVersion = "1.5.5"
 val dateTimeVersion = "0.4.0"
-val navVersion = "2.5.3"
 
 plugins {
     kotlin("multiplatform")
@@ -50,7 +49,6 @@ kotlin {
             dependencies {
                 implementation("io.ktor:ktor-client-android:$ktorVersion")
                 implementation("com.squareup.sqldelight:android-driver:$sqlDelightVersion")
-                implementation("androidx.navigation:navigation-compose:$navVersion")
             }
         }
         val androidUnitTest by getting
