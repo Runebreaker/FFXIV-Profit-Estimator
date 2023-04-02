@@ -18,6 +18,7 @@ import androidx.compose.material.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -25,9 +26,11 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.modifier.modifierLocalConsumer
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.TextFieldValue
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -237,15 +240,33 @@ fun MenuView(servers: List<DataCenter>, isDarkMode: Boolean, onThemeChange: () -
     ) { padding ->
         val padding = padding
         val navController = rememberNavController()
-        NavHost(navController = navController, startDestination = "home") {
+        NavHost(
+            navController = navController,
+            startDestination = "home",
+            modifier = Modifier
+                .padding(padding)
+        ) {
             composable("home") {
-                Button(onClick = {
-                    coroutineScope.launch {
-                        XIVAPI.getItem(app.rinascitaSwordID)
-                        navController.navigate("item_info/${app.rinascitaSwordID}")
+                Column(
+                    verticalArrangement = Arrangement.SpaceEvenly,
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Button(onClick = {
+                        coroutineScope.launch {
+                            XIVAPI.getItem(app.rinascitaSwordID)
+                            navController.navigate("item_info/${app.rinascitaSwordID}")
+                        }
+                    }) {
+                        Text("Test item 1!")
                     }
-                }) {
-                    Text("Test item!")
+                    Button(onClick = {
+                        coroutineScope.launch {
+                            XIVAPI.getItem(app.rinascitaSwordID + 1)
+                            navController.navigate("item_info/${app.rinascitaSwordID + 1}")
+                        }
+                    }) {
+                        Text("Test item 2!")
+                    }
                 }
             }
             composable("settings") {  }
@@ -257,9 +278,7 @@ fun MenuView(servers: List<DataCenter>, isDarkMode: Boolean, onThemeChange: () -
                     val itemCache = XIVAPI.getItemCache().getEntries()
                     val iconCache = XIVAPI.getIconCache().getEntries()
                     if (itemCache.containsKey(itemId)) ItemScreen(
-                        selectedItemId = itemId,
-                        itemCache = itemCache,
-                        iconCache = iconCache
+                        selectedItemId = itemId
                     )
                     else ErrorScreen(errorText = "Oops! That item doesn't exist!")
                 }
@@ -298,20 +317,34 @@ fun ErrorScreen(errorText: String) {
 
 @Composable
 fun ItemScreen(
-    selectedItemId: Int,
-    itemCache: LinkedHashMap<Int, Item>,
-    iconCache: LinkedHashMap<Int, ByteArray?>
+    selectedItemId: Int
 ) {
+    var id by remember { mutableStateOf(selectedItemId) }
+    XIVAPI.getItemCache().moveToFront(id)
+    XIVAPI.getIconCache().moveToFront(id)
+    val itemCache = XIVAPI.getItemCache().getEntries()
+    val iconCache = XIVAPI.getIconCache().getEntries()
     Column(
         verticalArrangement = Arrangement.SpaceEvenly,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Row(
             horizontalArrangement = Arrangement.SpaceEvenly,
-            verticalAlignment = Alignment.CenterVertically
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier
+                .padding(5.dp)
         ) {
-            itemCache[selectedItemId]?.let {
-                CacheItem(item = it, icon = iconCache[it.id])
+            itemCache[id]?.let {
+                CacheItem(
+                    item = it,
+                    icon = iconCache[it.id],
+                    contentColor = MaterialTheme.colors.onPrimary,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .fillMaxHeight(0.1f)
+                        .clip(RoundedCornerShape(50))
+                        .background(MaterialTheme.colors.primary)
+                )
             }
         }
         LazyColumn(
@@ -319,13 +352,27 @@ fun ItemScreen(
             horizontalAlignment = Alignment.CenterHorizontally,
             modifier = Modifier
                 .fillMaxSize()
+                .padding(5.dp)
         ) {
-            itemCache.forEach { entry ->
+            itemCache.entries.reversed().forEach { entry ->
                 item(
                     key = entry.key,
                     contentType = Item
                 ) { 
-                    CacheItem(item = entry.value, icon = iconCache[entry.key])
+                    CacheItem(
+                        item = entry.value,
+                        icon = iconCache[entry.key],
+                        contentColor = MaterialTheme.colors.onPrimary,
+                        withButton = true,
+                        onNavigate = { itemId ->
+                            id = itemId
+                        },
+                        modifier = Modifier
+                            .fillParentMaxWidth()
+                            .fillParentMaxHeight(0.1f)
+                            .clip(RoundedCornerShape(50))
+                            .background(MaterialTheme.colors.primary)
+                    )
                 }
             }
         }
@@ -333,15 +380,23 @@ fun ItemScreen(
 }
 
 @Composable
-fun CacheItem(item: Item, icon: ByteArray?) {
+fun ItemInfo(item: Item, icon: ByteArray?, contentColor: Color, modifier: Modifier) {
+
+}
+
+@Composable
+fun CacheItem(
+    item: Item,
+    icon: ByteArray?,
+    contentColor: Color,
+    modifier: Modifier,
+    withButton: Boolean = false,
+    onNavigate: (itemId: Int) -> Unit = {}
+) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceEvenly,
-        modifier = Modifier
-            .fillMaxWidth()
-            .fillMaxHeight(0.1f)
-            .clip(RoundedCornerShape(50))
-            .background(MaterialTheme.colors.primary)
+        modifier = modifier
     ) {
         icon?.let {
             ImageFromByteArray(
@@ -349,9 +404,9 @@ fun CacheItem(item: Item, icon: ByteArray?) {
                 scale = ContentScale.FillHeight,
                 modifier = Modifier
                     .fillMaxHeight()
-                    .padding(top = 0.dp, bottom = 0.dp, start = 0.dp, end = 5.dp)
+                    .padding(2.dp)
                     .clip(CircleShape)
-                    .border(2.dp, MaterialTheme.colors.secondary, CircleShape)
+                    .border(2.dp, contentColor, CircleShape)
             )
         } ?: Icon(Icons.Default.List, contentDescription = "DefaultIcon")
         Column(
@@ -360,21 +415,30 @@ fun CacheItem(item: Item, icon: ByteArray?) {
             modifier = Modifier
                 .weight(1f)
                 .fillMaxHeight()
-                .padding(5.dp)
         ) {
             Text(
                 text = item.name,
                 fontFamily = FontFamily.SansSerif,
                 fontWeight = FontWeight.Bold,
+                color = contentColor,
                 modifier = Modifier
-                    .weight(1f)
-                    .padding(5.dp)
             )
             Text(
                 text = item.recipeIngredients.joinToString(),
+                color = contentColor,
                 modifier = Modifier
-                    .weight(1f)
-                    .padding(5.dp)
+            )
+        }
+        if (withButton) IconButton(
+            onClick = { onNavigate(item.id) },
+            modifier = Modifier
+                .padding(2.dp)
+                .align(Alignment.CenterVertically)
+        ) {
+            Icon(
+                Icons.Default.PlayArrow,
+                tint = contentColor,
+                contentDescription = "ShowArrow"
             )
         }
     }
