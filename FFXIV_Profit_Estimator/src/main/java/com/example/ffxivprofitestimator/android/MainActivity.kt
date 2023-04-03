@@ -363,7 +363,7 @@ fun ItemScreen(
                 .weight(1f)
         ) {
             LazyColumn(
-                verticalArrangement = Arrangement.SpaceEvenly,
+                verticalArrangement = Arrangement.spacedBy(5.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
                 modifier = Modifier
                     .padding(5.dp)
