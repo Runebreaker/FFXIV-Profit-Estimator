@@ -4,10 +4,7 @@ import android.graphics.BitmapFactory
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.Image
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
+import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -315,6 +312,7 @@ fun ErrorScreen(errorText: String) {
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun ItemScreen(
     selectedItemId: Int
@@ -325,54 +323,72 @@ fun ItemScreen(
     val itemCache = XIVAPI.getItemCache().getEntries()
     val iconCache = XIVAPI.getIconCache().getEntries()
     Column(
-        verticalArrangement = Arrangement.SpaceEvenly,
-        horizontalAlignment = Alignment.CenterHorizontally
+        verticalArrangement = Arrangement.spacedBy(5.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = Modifier
+            .padding(5.dp)
     ) {
-        Row(
-            horizontalArrangement = Arrangement.SpaceEvenly,
-            verticalAlignment = Alignment.CenterVertically,
+        Box(
             modifier = Modifier
-                .padding(5.dp)
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(10))
+                .background(MaterialTheme.colors.secondary)
+                .weight(1f)
         ) {
-            itemCache[id]?.let {
-                CacheItem(
-                    item = it,
-                    icon = iconCache[it.id],
-                    contentColor = MaterialTheme.colors.onPrimary,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .fillMaxHeight(0.1f)
-                        .clip(RoundedCornerShape(50))
-                        .background(MaterialTheme.colors.primary)
-                )
-            }
-        }
-        LazyColumn(
-            verticalArrangement = Arrangement.SpaceEvenly,
-            horizontalAlignment = Alignment.CenterHorizontally,
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(5.dp)
-        ) {
-            itemCache.entries.reversed().forEach { entry ->
-                item(
-                    key = entry.key,
-                    contentType = Item
-                ) { 
+            Row(
+                horizontalArrangement = Arrangement.SpaceEvenly,
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier
+                    .padding(5.dp)
+            ) {
+                itemCache[id]?.let {
                     CacheItem(
-                        item = entry.value,
-                        icon = iconCache[entry.key],
+                        item = it,
+                        icon = iconCache[it.id],
                         contentColor = MaterialTheme.colors.onPrimary,
-                        withButton = true,
-                        onNavigate = { itemId ->
-                            id = itemId
-                        },
                         modifier = Modifier
-                            .fillParentMaxWidth()
-                            .fillParentMaxHeight(0.1f)
+                            .fillMaxWidth()
+                            .fillMaxHeight(0.2f)
                             .clip(RoundedCornerShape(50))
                             .background(MaterialTheme.colors.primary)
                     )
+                }
+            }
+        }
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(10))
+                .background(MaterialTheme.colors.secondary)
+                .weight(1f)
+        ) {
+            LazyColumn(
+                verticalArrangement = Arrangement.SpaceEvenly,
+                horizontalAlignment = Alignment.CenterHorizontally,
+                modifier = Modifier
+                    .padding(5.dp)
+            ) {
+                itemCache.entries.reversed().forEach { entry ->
+                    item(
+                        key = entry.key,
+                        contentType = Item
+                    ) {
+                        CacheItem(
+                            item = entry.value,
+                            icon = iconCache[entry.key],
+                            contentColor = MaterialTheme.colors.onPrimary,
+                            withButton = true,
+                            onNavigate = { itemId ->
+                                id = itemId
+                            },
+                            modifier = Modifier
+                                .fillParentMaxWidth()
+                                .fillParentMaxHeight(0.2f)
+                                .clip(RoundedCornerShape(50))
+                                .background(MaterialTheme.colors.primary)
+                                .animateItemPlacement()
+                        )
+                    }
                 }
             }
         }
