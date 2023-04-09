@@ -128,6 +128,10 @@ object UniversalisAPI : API() {
         return historyCache.first()
     }
 
+    suspend fun calculateProfit(itemId: Int, worldDcRegion: Any) {
+        TODO("Make this")
+    }
+
     /**
      * Retrieves the items from the history cache.
      * @return The entries as a LinkedHashMap
