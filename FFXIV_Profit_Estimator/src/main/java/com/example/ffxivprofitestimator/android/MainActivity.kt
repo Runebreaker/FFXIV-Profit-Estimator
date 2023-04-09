@@ -8,6 +8,7 @@ import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.CutCornerShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -19,9 +20,11 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.modifier.modifierLocalConsumer
 import androidx.compose.ui.text.font.FontFamily
@@ -38,6 +41,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.example.ffxivprofitestimator.App
+import com.example.ffxivprofitestimator.UniversalisAPI
 import com.example.ffxivprofitestimator.XIVAPI
 import com.example.ffxivprofitestimator.android.ui.theme.AppTheme
 import com.jetbrains.handson.kmm.shared.cache.DatabaseDriverFactory
@@ -248,21 +252,15 @@ fun MenuView(servers: List<DataCenter>, isDarkMode: Boolean, onThemeChange: () -
                     verticalArrangement = Arrangement.SpaceEvenly,
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    Button(onClick = {
-                        coroutineScope.launch {
-                            XIVAPI.getItem(app.rinascitaSwordID)
-                            navController.navigate("item_info/${app.rinascitaSwordID}")
+                    for (i in 0..10) {
+                        Button(onClick = {
+                            coroutineScope.launch {
+                                XIVAPI.getItem(app.rinascitaSwordID + i)
+                                navController.navigate("item_info/${app.rinascitaSwordID + i}")
+                            }
+                        }) {
+                            Text("Test item ${i + 1}!")
                         }
-                    }) {
-                        Text("Test item 1!")
-                    }
-                    Button(onClick = {
-                        coroutineScope.launch {
-                            XIVAPI.getItem(app.rinascitaSwordID + 1)
-                            navController.navigate("item_info/${app.rinascitaSwordID + 1}")
-                        }
-                    }) {
-                        Text("Test item 2!")
                     }
                 }
             }
@@ -275,7 +273,8 @@ fun MenuView(servers: List<DataCenter>, isDarkMode: Boolean, onThemeChange: () -
                     val itemCache = XIVAPI.getItemCache().getEntries()
                     val iconCache = XIVAPI.getIconCache().getEntries()
                     if (itemCache.containsKey(itemId)) ItemScreen(
-                        selectedItemId = itemId
+                        selectedItemId = itemId,
+                        worldDcRegion = chosenWorld ?: chosenDC ?: 67
                     )
                     else ErrorScreen(errorText = "Oops! That item doesn't exist!")
                 }
@@ -315,8 +314,10 @@ fun ErrorScreen(errorText: String) {
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun ItemScreen(
-    selectedItemId: Int
+    selectedItemId: Int,
+    worldDcRegion: Any
 ) {
+    val coroutineScope = rememberCoroutineScope()
     var id by remember { mutableStateOf(selectedItemId) }
     XIVAPI.getItemCache().moveToFront(id)
     XIVAPI.getIconCache().moveToFront(id)
@@ -332,7 +333,7 @@ fun ItemScreen(
             modifier = Modifier
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(10))
-                .background(MaterialTheme.colors.secondary)
+                .background(MaterialTheme.colors.onPrimary)
                 .weight(1f)
         ) {
             Row(
@@ -341,16 +342,14 @@ fun ItemScreen(
                 modifier = Modifier
                     .padding(5.dp)
             ) {
-                itemCache[id]?.let {
-                    CacheItem(
-                        item = it,
-                        icon = iconCache[it.id],
-                        contentColor = MaterialTheme.colors.onPrimary,
+                itemCache[id]?.let { item ->
+                    ItemInfo(
+                        worldDcRegion = worldDcRegion,
+                        item = item,
+                        icon = iconCache[id],
+                        contentColor = MaterialTheme.colors.primary,
+                        onContentColor = MaterialTheme.colors.onPrimary,
                         modifier = Modifier
-                            .fillMaxWidth()
-                            .fillMaxHeight(0.2f)
-                            .clip(RoundedCornerShape(50))
-                            .background(MaterialTheme.colors.primary)
                     )
                 }
             }
@@ -359,16 +358,19 @@ fun ItemScreen(
             modifier = Modifier
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(10))
-                .background(MaterialTheme.colors.secondary)
+                .background(MaterialTheme.colors.onPrimary)
                 .weight(1f)
         ) {
+            val columnState = rememberLazyListState()
             LazyColumn(
+                state = columnState,
                 verticalArrangement = Arrangement.spacedBy(5.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
                 modifier = Modifier
                     .padding(5.dp)
             ) {
-                itemCache.entries.reversed().forEach { entry ->
+                val reversedList = itemCache.entries.reversed()
+                reversedList.first().let { entry ->
                     item(
                         key = entry.key,
                         contentType = Item
@@ -378,8 +380,44 @@ fun ItemScreen(
                             icon = iconCache[entry.key],
                             contentColor = MaterialTheme.colors.onPrimary,
                             withButton = true,
+                            buttonIcon = Icons.Default.PlayArrow,
+                            buttonRotationAngle = -90f,
                             onNavigate = { itemId ->
                                 id = itemId
+                                coroutineScope.launch {
+                                    columnState.animateScrollToItem(0)
+                                }
+                            },
+                            modifier = Modifier
+                                .fillParentMaxWidth()
+                                .fillParentMaxHeight(0.2f)
+                                .clip(RoundedCornerShape(50))
+                                .background(MaterialTheme.colors.primary)
+                                .border(
+                                    4.dp,
+                                    MaterialTheme.colors.onBackground,
+                                    RoundedCornerShape(50)
+                                )
+                                .animateItemPlacement()
+                        )
+                    }
+                }
+                reversedList.subList(1, itemCache.size).forEach { entry ->
+                    item(
+                        key = entry.key,
+                        contentType = Item
+                    ) {
+                        CacheItem(
+                            item = entry.value,
+                            icon = iconCache[entry.key],
+                            contentColor = MaterialTheme.colors.onPrimary,
+                            withButton = true,
+                            buttonIcon = Icons.Default.PlayArrow,
+                            onNavigate = { itemId ->
+                                id = itemId
+                                coroutineScope.launch {
+                                    columnState.animateScrollToItem(0)
+                                }
                             },
                             modifier = Modifier
                                 .fillParentMaxWidth()
@@ -396,8 +434,89 @@ fun ItemScreen(
 }
 
 @Composable
-fun ItemInfo(item: Item, icon: ByteArray?, contentColor: Color, modifier: Modifier) {
-
+fun ItemInfo(worldDcRegion: Any, item: Item, icon: ByteArray?, contentColor: Color, onContentColor: Color, modifier: Modifier) {
+    val coroutineScope = rememberCoroutineScope()
+    val cache = UniversalisAPI.getCachedItems()
+    var currentHistoryView: HistoryView? by remember { mutableStateOf(cache[Pair(item.id, worldDcRegion)]) }
+    Box(
+        contentAlignment = Alignment.Center,
+        modifier = modifier
+            .fillMaxSize()
+            .padding(5.dp)
+    ) {
+        currentHistoryView?.let {
+            Column(
+                verticalArrangement = Arrangement.spacedBy(5.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                modifier = modifier
+                    .fillMaxSize()
+            ) {
+                Row(
+                    horizontalArrangement = Arrangement.Center,
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = modifier
+                        .fillMaxWidth()
+                        .weight(1f)
+                        .clip(CutCornerShape(50))
+                        .background(contentColor)
+                ) {
+                    Text(
+                        it.worldName ?: it.dcName ?: it.regionName ?: "Error fetching world/dc/region.",
+                        textAlign = TextAlign.Center,
+                        fontFamily = FontFamily.SansSerif,
+                        fontWeight = FontWeight.Bold,
+                        color = onContentColor
+                    )
+                }
+                Row(
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f)
+                        .clip(CutCornerShape(50))
+                        .background(contentColor)
+                ) {
+                    icon?.let {
+                        ImageFromByteArray(
+                            byteArray = it,
+                            modifier = modifier
+                                .fillMaxHeight()
+                                .padding(5.dp)
+                                .clip(RoundedCornerShape(10))
+                                .border(2.dp, onContentColor, RoundedCornerShape(10)),
+                            scale = ContentScale.FillHeight
+                        )
+                    } ?: Icon(Icons.Default.List, contentDescription = "DefaultIcon")
+                    Text(
+                        "${item.name}${if (it.entries?.first()?.hq == true) " (HQ)" else ""}",
+                        textAlign = TextAlign.Center,
+                        fontFamily = FontFamily.SansSerif,
+                        fontWeight = FontWeight.Bold,
+                        color = onContentColor
+                    )
+                }
+            }
+        } ?: Button(
+            colors = ButtonDefaults.buttonColors(
+                backgroundColor = contentColor,
+                contentColor = onContentColor
+            ),
+            modifier = modifier,
+            onClick = {
+                coroutineScope.launch {
+                    currentHistoryView = UniversalisAPI.getItem(item.id, worldDcRegion)
+                }
+            }) {
+            Text(
+                "Get Item info!",
+                textAlign = TextAlign.Center,
+                fontFamily = FontFamily.SansSerif,
+                fontWeight = FontWeight.Bold,
+                color = onContentColor
+            )
+        }
+    }
 }
 
 @Composable
@@ -407,6 +526,8 @@ fun CacheItem(
     contentColor: Color,
     modifier: Modifier,
     withButton: Boolean = false,
+    buttonIcon: ImageVector,
+    buttonRotationAngle: Float = 0f,
     onNavigate: (itemId: Int) -> Unit = {}
 ) {
     Row(
@@ -420,7 +541,7 @@ fun CacheItem(
                 scale = ContentScale.FillHeight,
                 modifier = Modifier
                     .fillMaxHeight()
-                    .padding(2.dp)
+                    .padding(4.dp)
                     .clip(CircleShape)
                     .border(2.dp, contentColor, CircleShape)
             )
@@ -452,9 +573,11 @@ fun CacheItem(
                 .align(Alignment.CenterVertically)
         ) {
             Icon(
-                Icons.Default.PlayArrow,
+                buttonIcon,
                 tint = contentColor,
-                contentDescription = "ShowArrow"
+                contentDescription = "ShowArrow",
+                modifier = Modifier
+                    .rotate(buttonRotationAngle)
             )
         }
     }
